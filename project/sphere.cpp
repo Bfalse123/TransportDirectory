@@ -1,4 +1,4 @@
-#include "sphere.hpp"
+#include "sphere.h"
 
 using namespace std;
 
