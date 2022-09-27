@@ -2,72 +2,77 @@
 
 namespace Svg {
 
-  Circle& Circle::SetCenter(Point point) {
+Circle& Circle::SetCenter(Point point) {
     center_ = point;
     return *this;
-  }
-  Circle& Circle::SetRadius(double radius) {
+}
+Circle& Circle::SetRadius(double radius) {
     radius_ = radius;
     return *this;
-  }
+}
 
-  void Circle::Render(ostream& out) const {
+void Circle::Render(ostream& out) const {
     out << "<circle ";
     out << "cx=\\\"" << center_.x << "\\\" ";
     out << "cy=\\\"" << center_.y << "\\\" ";
     out << "r=\\\"" << radius_ << "\\\" ";
     BaseAttrs::RenderAttrs(out);
     out << "/>";
-  }
+}
 
-  Polyline& Polyline::AddPoint(Point point) {
+Polyline& Polyline::AddPoint(Point point) {
     points_.push_back(point);
     return *this;
-  }
+}
 
-  void Polyline::Render(ostream& out) const {
+void Polyline::Render(ostream& out) const {
     out << "<polyline ";
     out << "points=\\\"";
     bool first = true;
     for (const Point point : points_) {
-      if (first) {
-        first = false;
-      } else {
-        out << " ";
-      }
-      out << point.x << "," << point.y;
+        if (first) {
+            first = false;
+        } else {
+            out << " ";
+        }
+        out << point.x << "," << point.y;
     }
     out << "\\\" ";
     BaseAttrs::RenderAttrs(out);
     out << "/>";
-  }
+}
 
-  Text& Text::SetPoint(Point point) {
+Text& Text::SetPoint(Point point) {
     point_ = point;
     return *this;
-  }
+}
 
-  Text& Text::SetOffset(Point point) {
+Text& Text::SetOffset(Point point) {
     offset_ = point;
     return *this;
-  }
+}
 
-  Text& Text::SetFontSize(uint32_t size) {
+Text& Text::SetFontSize(uint32_t size) {
     font_size_ = size;
     return *this;
-  }
+}
 
-  Text& Text::SetFontFamily(const string& value) {
+Text& Text::SetFontFamily(const string& value) {
     font_family_ = value;
     return *this;
-  }
+}
 
-  Text& Text::SetData(const string& data) {
+Text& Text::SetData(const string& data) {
     data_ = data;
     return *this;
-  }
+}
 
-  void Text::Render(ostream& out) const {
+Text& Text::SetFontWeight(const string& value) {
+    font_weight_ = value;
+    return *this;
+}
+
+void Text::Render(ostream& out) const {
     out << "<text ";
     out << "x=\\\"" << point_.x << "\\\" ";
     out << "y=\\\"" << point_.y << "\\\" ";
@@ -77,18 +82,21 @@ namespace Svg {
     if (font_family_) {
         out << "font-family=\\\"" << *font_family_ << "\\\" ";
     }
+    if (font_weight_) {
+        out << "font-weight=\\\"" << *font_weight_ << "\\\" ";
+    }
     BaseAttrs::RenderAttrs(out);
     out << ">";
     out << data_;
     out << "</text>";
-  }
+}
 
-  void Document::Render(ostream& out) const {
+void Document::Render(ostream& out) const {
     out << "<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\" ?>";
     out << "<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" version=\\\"1.1\\\">";
     for (const auto& object_ptr : objects_) {
-      object_ptr->Render(out);
+        object_ptr->Render(out);
     }
     out << "</svg>";
-  }
 }
+}  // namespace Svg

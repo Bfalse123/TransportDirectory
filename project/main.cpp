@@ -1,14 +1,14 @@
-#include "json.h"
-#include "transport_catalog.h"
-#include "executor.h"
-#include "transport_graph.h"
-#include "canvas.h"
-
-#include <iostream>
 #include <fstream>
-#include <vector>
+#include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
+
+#include "canvas.h"
+#include "executor.h"
+#include "json.h"
+#include "transport_catalog.h"
+#include "transport_graph.h"
 
 void Execute(std::istream &input, std::ostream &output) {
     using namespace std;

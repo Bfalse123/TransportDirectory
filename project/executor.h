@@ -1,14 +1,14 @@
 #pragma once
 
-#include "router.h"
+#include <map>
+#include <sstream>
+#include <vector>
+
+#include "canvas.h"
 #include "json.h"
+#include "router.h"
 #include "transport_catalog.h"
 #include "transport_graph.h"
-#include "canvas.h"
-
-#include <vector>
-#include <sstream>
-#include <map>
 
 template <typename Weight>
 struct Executor {
@@ -19,13 +19,12 @@ struct Executor {
     Graph::Router<Time>& router;
     const TransportCatalog::TransportCatalog& map;
     const TransportCatalog::TransportGraph& graph;
-    const Svg::Canvas& canvas;
+    Svg::Canvas& canvas;
 
-    Executor (
+    Executor(
         Graph::Router<Time>& router, const TransportCatalog::TransportCatalog& map,
-        const TransportCatalog::TransportGraph& graph, const Svg::Canvas& canvas
-        )
-    : router(router), map(map), graph(graph), canvas(canvas) {
+        const TransportCatalog::TransportGraph& graph, Svg::Canvas& canvas)
+        : router(router), map(map), graph(graph), canvas(canvas) {
     }
 
     Json::Dict ExecuteBusRequest(const std::string& name) {
@@ -80,8 +79,7 @@ struct Executor {
             Graph::EdgeId edge = router.GetRouteEdge(info->id, i);
             if (std::holds_alternative<WaitEdge>(graph.edges[edge])) {
                 items.push_back(Json::Node(LoadWaitEdge(std::get<WaitEdge>(graph.edges[edge]))));
-            }
-            else if (std::holds_alternative<BusEdge>(graph.edges[edge])) {
+            } else if (std::holds_alternative<BusEdge>(graph.edges[edge])) {
                 items.push_back(Json::Node(LoadBusEdge(std::get<BusEdge>(graph.edges[edge]))));
             }
         }
@@ -93,7 +91,7 @@ struct Executor {
     Json::Dict ExecuteMapRequest() {
         Json::Dict res;
         res["map"] = Json::Node(canvas.Draw());
-        return res;   
+        return res;
     }
 
     std::vector<Json::Node> ExecuteRequests(const std::vector<Json::Node>& requests) {
@@ -105,14 +103,11 @@ struct Executor {
             const auto& type = request.at("type").AsString();
             if (type == "Bus") {
                 dict = ExecuteBusRequest(request.at("name").AsString());
-            }
-            else if (type == "Stop") {
+            } else if (type == "Stop") {
                 dict = ExecuteStopRequest(request.at("name").AsString());
-            }
-            else if (type == "Route") {
+            } else if (type == "Route") {
                 dict = ExecuteRouteRequest(request.at("from").AsString(), request.at("to").AsString());
-            }
-            else if (type == "Map") {
+            } else if (type == "Map") {
                 dict = ExecuteMapRequest();
             }
             dict["request_id"] = Json::Node(request.at("id").AsInt());
