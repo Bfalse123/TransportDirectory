@@ -45,7 +45,7 @@ class TransportCatalog {
         return stops.size();
     }
 
-    const std::map<StopName, Stop> GetStops() const {
+    const std::map<StopName, Stop>& GetStops() const {
         return stops;
     }
 
@@ -61,7 +61,7 @@ class TransportCatalog {
         return buses.size();
     }
 
-    const std::map<BusName, Bus> GetBuses() const {
+    const std::map<BusName, Bus>& GetBuses() const {
         return buses;
     }
 
