@@ -2,14 +2,13 @@
 
 #include <limits.h>
 
-#include <cmath>
-#include <iomanip>
-#include <numeric>
 #include <sstream>
+#include <unordered_set>
 
 #include "sphere.h"
 
 namespace Svg {
+using namespace TransportCatalog;
 
 Svg::Color json_to_color(const Json::Node &node) {
     if (std::holds_alternative<std::string>(node.GetBase())) {
@@ -26,7 +25,7 @@ Svg::Color json_to_color(const Json::Node &node) {
     return color;
 }
 
-Canvas::Canvas(const std::map<std::string, Json::Node> &settings, const TransportCatalog::TransportCatalog &db)
+Canvas::Canvas(const std::map<std::string, Json::Node> &settings, const Catalog &db)
     : db(db) {
     funcs.insert(std::make_pair("bus_lines", &Svg::Canvas::RenderBusesRoutes));
     funcs.insert(std::make_pair("bus_labels", &Svg::Canvas::RenderBusesLabels));
@@ -56,24 +55,69 @@ Canvas::Canvas(const std::map<std::string, Json::Node> &settings, const Transpor
     ConstructBusesColors();
 }
 
+bool IsNeighbours(const Catalog::Stop *stop1, const Catalog::Stop *stop2) {
+    for (const auto &[bus, positions] : stop1->buses_positions) {
+        if (stop2->buses_positions.count(bus)) {
+            for (const auto &pos1 : positions) {
+                for (const auto &pos2 : stop2->buses_positions.at(bus)) {
+                    if (std::abs(int(pos1) - int(pos2)) == 1) return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+auto Glue(const std::vector<std::pair<double, const Catalog::Stop *>> &sorted) {
+    std::vector<std::pair<double, std::vector<const Catalog::Stop *>>> glued;
+    bool first = true;
+    for (const auto &[val, stop] : sorted) {
+        bool glue = true;
+        if (!first) {
+            for (const auto &prev : glued.back().second) {
+                if(IsNeighbours(stop, prev)) {
+                    glue = false;
+                    break;
+                }
+            }
+        }
+        if (glue && !first) {
+            glued.back().second.push_back(stop);
+        } else {
+            glued.push_back({val, {stop}});
+        }
+        first = false;
+    }
+    return glued;
+}
+
 void Canvas::ConstructStopsPoints() {
     if (db.StopsCount() == 0) return;
     const auto &stops = db.GetStops();
     double e = std::numeric_limits<double>().epsilon();
-    std::vector<std::pair<double, const std::string*>> lon_sorted, lat_sorted;
+    std::vector<std::pair<double, const Catalog::Stop *>> lon_sorted, lat_sorted;
     lon_sorted.reserve(stops.size());
     lat_sorted.reserve(stops.size());
+    bool first = true;
     for (const auto &[name, stop] : db.GetStops()) {
-        lon_sorted.emplace_back(stop.geo_pos.longitude, &name);
-        lat_sorted.emplace_back(stop.geo_pos.latitude, &name);
+        lon_sorted.emplace_back(stop.geo_pos.longitude, &stop);
+        lat_sorted.emplace_back(stop.geo_pos.latitude, &stop);
     }
     sort(lon_sorted.begin(), lon_sorted.end());
     sort(lat_sorted.begin(), lat_sorted.end());
-    double x_step = stops.size() - 1 ? (width - 2 * padding) / (stops.size() - 1) : 0.0;
-    double y_step = stops.size() - 1 ? (height - 2 * padding) / (stops.size() - 1) : 0.0;
-    for (size_t i = 0; i < stops.size(); ++i) {
-        stops_points[*lon_sorted[i].second].x = i * x_step + padding;
-        stops_points[*lat_sorted[i].second].y = height - padding - i * y_step;
+    auto glued_by_lon = Glue(lon_sorted);
+    auto glued_by_lat = Glue(lat_sorted);
+    double x_step = glued_by_lon.size() - 1 ? (width - 2 * padding) / (glued_by_lon.size() - 1) : 0.0;
+    double y_step = glued_by_lat.size() - 1 ? (height - 2 * padding) / (glued_by_lat.size() - 1) : 0.0;
+    for (size_t i = 0; i < glued_by_lon.size(); ++i) {
+        for (const auto &stop : glued_by_lon[i].second) {
+            stops_points[stop->name].x = i * x_step + padding;
+        }
+    }
+    for (size_t i = 0; i < glued_by_lat.size(); ++i) {
+        for (const auto &stop : glued_by_lat[i].second) {
+            stops_points[stop->name].y = height - padding - i * y_step;
+        }
     }
 }
 
@@ -151,7 +195,7 @@ void Canvas::RenderText(Text base, Svg::Document &svg, Svg::Color color) {
 
 void Canvas::ConstructBusesColors() {
     size_t cnt_color = 0;
-    std::map<TransportCatalog::BusName, Svg::Color> colors;
+    std::map<BusName, Svg::Color> colors;
     for (const auto &[name, _] : db.GetBuses()) {
         buses_colors[name] = color_palette[cnt_color];
         cnt_color = (cnt_color + 1) % color_palette.size();
@@ -164,7 +208,6 @@ std::string Canvas::Draw() {
         (this->*funcs.at(layer))(svg);
     }
     std::ostringstream out;
-    out << std::setprecision(16);
     svg.Render(out);
     return out.str();
 }

@@ -7,11 +7,12 @@ using namespace std;
 
 namespace TransportCatalog {
 
-using Stop = TransportCatalog::Stop;
-using Bus = TransportCatalog::Bus;
+using Stop = Catalog::Stop;
+using Bus = Catalog::Bus;
 
-void TransportCatalog::LoadStop(const Json::Dict& data) {
+void Catalog::LoadStop(const Json::Dict& data) {
     const auto& name = data.at("name").AsString();
+    stops[name].name = name;
     stops[name].geo_pos.latitude = data.at("latitude").AsDouble();
     stops[name].geo_pos.longitude = data.at("longitude").AsDouble();
     stops[name].distances[name] = 0;
@@ -24,7 +25,7 @@ void TransportCatalog::LoadStop(const Json::Dict& data) {
 }
 
 template <typename It>
-std::pair<int32_t, double> TransportCatalog::ComputeDistances(It begin, It end) {
+std::pair<int32_t, double> Catalog::ComputeDistances(It begin, It end) {
     int32_t route_length = 0;
     double geo_route_length = 0.0;
     for (; std::next(begin) != end; begin = std::next(begin)) {
@@ -36,17 +37,15 @@ std::pair<int32_t, double> TransportCatalog::ComputeDistances(It begin, It end) 
     return {route_length, geo_route_length};
 }
 
-void TransportCatalog::LoadBus(const Json::Dict& data) {
+void Catalog::LoadBus(const Json::Dict& data) {
     const auto& bus_name = data.at("name").AsString();
     Bus& bus = buses[bus_name];
     bus.is_rounded = data.at("is_roundtrip").AsBool();
     for (const auto& node : data.at("stops").AsArray()) {
         StopName stop_name = node.AsString();
         Stop& stop = stops[stop_name];
-        if (bus.unique_stops.count(stop_name) == 0) {
-            stop.buses.insert(bus_name);
-            bus.unique_stops.insert(stop_name);
-        }
+        bus.unique_stops.insert(stop_name);
+        stop.buses_positions[bus_name].push_back(bus.route.size());
         bus.route.push_back(stop_name);
     }
     auto lengths = ComputeDistances(bus.route.begin(), bus.route.end());
@@ -59,7 +58,7 @@ void TransportCatalog::LoadBus(const Json::Dict& data) {
     }
 }
 
-TransportCatalog::TransportCatalog(const vector<Json::Node>& data, const Json::Dict& settings)
+Catalog::Catalog(const vector<Json::Node>& data, const Json::Dict& settings)
     : bus_velocity(settings.at("bus_velocity").AsDouble() / 3.6), wait_time(settings.at("bus_wait_time").AsInt()) {
     using namespace Json;
     for (const Node& node : data) {

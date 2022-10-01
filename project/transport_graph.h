@@ -10,7 +10,7 @@ namespace TransportCatalog {
 
 class TransportGraph {
    public:
-    TransportGraph(const TransportCatalog& db) : transport_db(db), graph(db.StopsCount() * 2) {
+    TransportGraph(const Catalog& db) : transport_db(db), graph(db.StopsCount() * 2) {
         BuildGraph();
     }
 
@@ -44,7 +44,7 @@ class TransportGraph {
     }
 
    private:
-    const TransportCatalog& transport_db;
+    const Catalog& transport_db;
     TimeGraph graph;
 
     void BuildGraph() {

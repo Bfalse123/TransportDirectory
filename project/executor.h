@@ -17,19 +17,19 @@ struct Executor {
     using BusEdge = TransportCatalog::TransportGraph::BusEdge;
 
     Graph::Router<Time>& router;
-    const TransportCatalog::TransportCatalog& map;
+    const TransportCatalog::Catalog& map;
     const TransportCatalog::TransportGraph& graph;
     Svg::Canvas& canvas;
 
     Executor(
-        Graph::Router<Time>& router, const TransportCatalog::TransportCatalog& map,
+        Graph::Router<Time>& router, const TransportCatalog::Catalog& map,
         const TransportCatalog::TransportGraph& graph, Svg::Canvas& canvas)
         : router(router), map(map), graph(graph), canvas(canvas) {
     }
 
     Json::Dict ExecuteBusRequest(const std::string& name) {
         if (!map.IsBusExists(name)) return {{"error_message", Json::Node("not found")}};
-        const TransportCatalog::TransportCatalog::Bus& bus = map.GetBus(name);
+        const TransportCatalog::Catalog::Bus& bus = map.GetBus(name);
         Json::Dict res;
         res["route_length"] = Json::Node(bus.route_length);
         res["curvature"] = Json::Node(bus.route_length / bus.geo_route_length);
@@ -40,12 +40,12 @@ struct Executor {
 
     Json::Dict ExecuteStopRequest(const std::string& name) {
         if (!map.IsStopExists(name)) return {{"error_message", Json::Node("not found")}};
-        const TransportCatalog::TransportCatalog::Stop& stop = map.GetStop(name);
+        const TransportCatalog::Catalog::Stop& stop = map.GetStop(name);
         Json::Dict res;
         std::vector<Json::Node> buses;
-        buses.reserve(stop.buses.size());
-        for (const auto& bus : stop.buses) {
-            buses.emplace_back(bus);
+        buses.reserve(stop.buses_positions.size());
+        for (const auto& [name, _] : stop.buses_positions) {
+            buses.emplace_back(name);
         }
         res["buses"] = Json::Node(buses);
         return res;

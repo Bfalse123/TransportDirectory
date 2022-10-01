@@ -19,7 +19,7 @@ void Execute(std::istream &input, std::ostream &output) {
     const auto &out_requests = data.at("stat_requests").AsArray();
     const auto &in_requests = data.at("base_requests").AsArray();
     const auto &render_settings = data.at("render_settings").AsMap();
-    TransportCatalog::TransportCatalog db(in_requests, settings);
+    TransportCatalog::Catalog db(in_requests, settings);
     Svg::Canvas canvas(render_settings, db);
     TransportCatalog::TransportGraph graph(db);
     Graph::Router router(graph.GetGraph());
@@ -28,9 +28,9 @@ void Execute(std::istream &input, std::ostream &output) {
 }
 
 int main() {
-    // std::ifstream input("../.help/input.json");
-    // std::ofstream output("../.help/output.json");
-    // Execute(input, output);
+    //std::ifstream input("../.help/input.json");
+    //std::ofstream output("../.help/output.json");
+    //Execute(input, output);
     Execute(std::cin, std::cout);
     return 0;
 }

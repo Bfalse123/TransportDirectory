@@ -15,12 +15,12 @@
 namespace Svg {
 class Canvas {
    public:
-    Canvas(const std::map<std::string, Json::Node>& settings, const TransportCatalog::TransportCatalog& db);
+    Canvas(const std::map<std::string, Json::Node>& settings, const TransportCatalog::Catalog& db);
     std::string Draw();
 
    private:
     typedef void (Svg::Canvas::*drawing_func)(Svg::Document&);
-    const TransportCatalog::TransportCatalog& db;
+    const TransportCatalog::Catalog& db;
     double width, height;
     double padding;
     double stop_radius;

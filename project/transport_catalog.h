@@ -14,7 +14,7 @@ using Time = double;
 using StopName = std::string;
 using BusName = std::string;
 
-class TransportCatalog {
+class Catalog {
    public:
     struct Bus {
         bool is_rounded;
@@ -33,9 +33,10 @@ class TransportCatalog {
     };
 
     struct Stop {
+        std::string name;
         Sphere::Point geo_pos;
         std::unordered_map<StopName, int32_t> distances;
-        std::set<BusName> buses;
+        std::map<BusName, std::vector<size_t>> buses_positions;
     };
 
     Time wait_time;
@@ -76,8 +77,8 @@ class TransportCatalog {
     template <typename It>
     std::pair<int32_t, double> ComputeDistances(It begin, It end);
 
-    TransportCatalog(const std::vector<Json::Node>& data, const Json::Dict& settings);
-    TransportCatalog(const TransportCatalog&) = delete;
+    Catalog(const std::vector<Json::Node>& data, const Json::Dict& settings);
+    Catalog(const Catalog&) = delete;
 
    private:
     std::map<std::string, Stop> stops;
