@@ -50,12 +50,21 @@ class Canvas {
     std::vector<std::string> layers;
     std::map<std::string, void (Svg::Canvas::*)(Svg::Document& svg)> funcs;
 
-
-    void ExtractMapRenderSettings(const std::map<std::string, Json::Node> &settings);
-    void ExtractStopRenderSettings(const std::map<std::string, Json::Node> &settings);
-    void ExtractBusRenderSettings(const std::map<std::string, Json::Node> &settings);
+    void ExtractMapRenderSettings(const std::map<std::string, Json::Node>& settings);
+    void ExtractStopRenderSettings(const std::map<std::string, Json::Node>& settings);
+    void ExtractBusRenderSettings(const std::map<std::string, Json::Node>& settings);
     void ConstructStopsPoints();
     void ConstructBusesColors();
+
+    struct StopWithUniformArrangement {
+        double longitude;
+        double latitude;
+    };
+
+    bool IsNeighbours(const TransportCatalog::Catalog::Stop* stop1, const TransportCatalog::Catalog::Stop* stop2);
+    std::map<int32_t, std::vector<const TransportCatalog::Catalog::Stop*>> Glue(std::vector<std::pair<double, const TransportCatalog::Catalog::Stop *>> &sorted);
+    std::map<std::string, StopWithUniformArrangement> ComputeUniformArrangements();
+    void AddStopsWithNoBuses(std::map<std::string, StopWithUniformArrangement>& uniform_stops);
 
     void RenderBusesRoutes(Svg::Document& svg);
     void RenderStopCircles(Svg::Document& svg);

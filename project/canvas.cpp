@@ -3,6 +3,7 @@
 #include <limits.h>
 
 #include <sstream>
+#include <algorithm>
 #include <unordered_set>
 
 #include "sphere.h"
@@ -71,7 +72,7 @@ Canvas::Canvas(const std::map<std::string, Json::Node> &settings, const Catalog 
     ConstructBusesColors();
 }
 
-bool IsNeighbours(const Catalog::Stop *stop1, const Catalog::Stop *stop2) {
+bool Canvas::IsNeighbours(const Catalog::Stop *stop1, const Catalog::Stop *stop2) {
     for (const auto &[bus, positions] : stop1->pos_in_routes) {
         if (stop2->pos_in_routes.count(bus)) {
             for (const auto &pos1 : positions) {
@@ -84,39 +85,25 @@ bool IsNeighbours(const Catalog::Stop *stop1, const Catalog::Stop *stop2) {
     return false;
 }
 
-auto Glue(const std::map<double, std::unordered_set<const Catalog::Stop *>> &sorted) {
-    std::map<double, std::vector<const Catalog::Stop *>> glued;
-    bool first = true;
-    double prev = 0;
-    for (auto it = sorted.begin(); it != sorted.end(); it = std::next(it)) {
-        bool glue = true;
-        for (const auto &stop : it->second) {
-            for (size_t i = 0; !first && i < glued[prev].size(); ++i) {
-                if (it->second.count(glued[prev][i])) continue;
-                if (IsNeighbours(stop, glued[prev][i])) {
-                    glue = false;
-                    break;
-                }
+std::map<int32_t, std::vector<const Catalog::Stop *>> Canvas::Glue(std::vector<std::pair<double, const Catalog::Stop *>> &sorted) {
+    std::map<int32_t, std::vector<const Catalog::Stop *>> glued;
+    std::unordered_map<std::string, int32_t> met;
+    for (const auto &[_, stop] : sorted) {
+        int32_t insert = -1;
+        for (const auto &[prev_name, id] : met) {
+            if (IsNeighbours(stop, &db.GetStop(prev_name))) {
+                insert = std::max(insert, id);
             }
         }
-        double insert = glue && !first ? prev : it->first;
-        for (const auto &stop : it->second) {
-            glued[insert].push_back(stop);
-        }
-        prev = insert;
-        first = false;
+        glued[++insert].push_back(stop);
+        met[stop->name] = insert;
     }
     return glued;
 }
 
-struct StopWithUniformArrangement {
-    double longitude;
-    double latitude;
-};
-
-auto ComputeUniformArrangements(const std::map<BusName, Catalog::Bus> &buses) {
+std::map<std::string, Canvas::StopWithUniformArrangement> Canvas::ComputeUniformArrangements() {
     std::map<std::string, StopWithUniformArrangement> uniform_stops;
-    for (const auto &[name, bus] : buses) {
+    for (const auto &[name, bus] : db.GetBuses()) {
         size_t i = 0;
         const auto &route = bus.route;
         for (size_t j = 1; j < route.size(); ++j) {
@@ -141,9 +128,8 @@ auto ComputeUniformArrangements(const std::map<BusName, Catalog::Bus> &buses) {
     return uniform_stops;
 }
 
-void AddStopsWithNoBuses(std::map<std::string, StopWithUniformArrangement> &uniform_stops,
-                         const std::map<StopName, Catalog::Stop> &stops) {
-    for (const auto &[name, stop] : stops) {
+void Canvas::AddStopsWithNoBuses(std::map<std::string, StopWithUniformArrangement> &uniform_stops) {
+    for (const auto &[name, stop] : db.GetStops()) {
         if (stop.pos_in_routes.size() == 0) {
             uniform_stops[name] = {
                 stop.geo_pos.longitude,
@@ -154,14 +140,19 @@ void AddStopsWithNoBuses(std::map<std::string, StopWithUniformArrangement> &unif
 
 void Canvas::ConstructStopsPoints() {
     if (db.StopsCount() == 0) return;
-    auto uniform_stops = ComputeUniformArrangements(db.GetBuses());
-    AddStopsWithNoBuses(uniform_stops, db.GetStops());
-    std::map<double, std::unordered_set<const Catalog::Stop *>> lon_sorted, lat_sorted;
+    auto uniform_stops = ComputeUniformArrangements();
+    AddStopsWithNoBuses(uniform_stops);
+    std::vector<std::pair<double, const Catalog::Stop *>> lon_sorted, lat_sorted;
     bool first = true;
     for (const auto &[name, stop] : db.GetStops()) {
-        lon_sorted[uniform_stops[name].longitude].insert(&stop);
-        lat_sorted[uniform_stops[name].latitude].insert(&stop);
+        lon_sorted.push_back({uniform_stops[name].longitude, &stop});
+        lat_sorted.push_back({uniform_stops[name].latitude, &stop});
     }
+    auto compare_by_double = [](const auto& lhs, const auto& rhs){
+        return lhs.first < rhs.first;
+    };
+    std::sort(lon_sorted.begin(), lon_sorted.end(), compare_by_double);
+    std::sort(lat_sorted.begin(), lat_sorted.end(), compare_by_double);
     auto glued_by_lon = Glue(lon_sorted);
     auto glued_by_lat = Glue(lat_sorted);
     double padding = map_render_settings.padding;
@@ -169,19 +160,15 @@ void Canvas::ConstructStopsPoints() {
     double height = map_render_settings.height;
     double x_step = glued_by_lon.size() - 1 ? (width - 2 * padding) / (glued_by_lon.size() - 1) : 0.0;
     double y_step = glued_by_lat.size() - 1 ? (height - 2 * padding) / (glued_by_lat.size() - 1) : 0.0;
-    size_t i = 0;
-    for (const auto &[val, stops] : glued_by_lon) {
+    for (const auto &[idx, stops] : glued_by_lon) {
         for (const auto &stop : stops) {
-            stops_points[stop->name].x = i * x_step + padding;
+            stops_points[stop->name].x = idx * x_step + padding;
         }
-        ++i;
     }
-    i = 0;
-    for (const auto &[val, stops] : glued_by_lat) {
+    for (const auto &[idy, stops] : glued_by_lat) {
         for (const auto &stop : stops) {
-            stops_points[stop->name].y = height - padding - i * y_step;
+            stops_points[stop->name].y = height - padding - idy * y_step;
         }
-        ++i;
     }
 }
 
