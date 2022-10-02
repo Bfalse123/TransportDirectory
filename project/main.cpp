@@ -28,9 +28,9 @@ void Execute(std::istream &input, std::ostream &output) {
 }
 
 int main() {
-    //std::ifstream input("../.help/input.json");
-    //std::ofstream output("../.help/output.json");
-    //Execute(input, output);
+    // std::ifstream input("../.help/input.json");
+    // std::ofstream output("../.help/output.json");
+    // Execute(input, output);
     Execute(std::cin, std::cout);
     return 0;
 }

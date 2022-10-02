@@ -70,9 +70,9 @@ class TransportGraph {
             int32_t distance = 0, span_cnt = 0;
             It prev = stop_from;
             for (It stop_to = stop_from; stop_to != end; stop_to = std::next(stop_to)) {
-                distance += stops.at(*prev).distances.at(*stop_to);
+                distance += (*prev)->distances.at((*stop_to)->name);
                 Time time = (distance / transport_db.bus_velocity) / 60;
-                graph.AddEdge({vertices[*stop_from].ride, vertices[*stop_to].wait, time});
+                graph.AddEdge({vertices[(*stop_from)->name].ride, vertices[(*stop_to)->name].wait, time});
                 edges.push_back(Edge(BusEdge{bus, span_cnt, time}));
                 prev = stop_to;
                 ++span_cnt;

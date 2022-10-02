@@ -16,11 +16,18 @@ using BusName = std::string;
 
 class Catalog {
    public:
+    struct Stop {
+        std::string name;
+        Sphere::Point geo_pos;
+        std::unordered_map<StopName, int32_t> distances;
+        std::map<BusName, std::set<size_t>> pos_in_routes;
+    };
+
     struct Bus {
         bool is_rounded;
         int32_t route_length;
         double geo_route_length;
-        std::vector<StopName> route;
+        std::vector<Stop*> route;
         std::unordered_set<StopName> unique_stops;
 
         int32_t GetStopCount() const {
@@ -30,13 +37,6 @@ class Catalog {
         int32_t GetUniqueStopCount() const {
             return unique_stops.size();
         }
-    };
-
-    struct Stop {
-        std::string name;
-        Sphere::Point geo_pos;
-        std::unordered_map<StopName, int32_t> distances;
-        std::map<BusName, std::vector<size_t>> buses_positions;
     };
 
     Time wait_time;
@@ -73,9 +73,6 @@ class Catalog {
     const Bus& GetBus(const BusName& name) const {
         return buses.at(name);
     }
-
-    template <typename It>
-    std::pair<int32_t, double> ComputeDistances(It begin, It end);
 
     Catalog(const std::vector<Json::Node>& data, const Json::Dict& settings);
     Catalog(const Catalog&) = delete;

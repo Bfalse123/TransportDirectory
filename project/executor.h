@@ -43,8 +43,8 @@ struct Executor {
         const TransportCatalog::Catalog::Stop& stop = map.GetStop(name);
         Json::Dict res;
         std::vector<Json::Node> buses;
-        buses.reserve(stop.buses_positions.size());
-        for (const auto& [name, _] : stop.buses_positions) {
+        buses.reserve(stop.pos_in_routes.size());
+        for (const auto& [name, _] : stop.pos_in_routes) {
             buses.emplace_back(name);
         }
         res["buses"] = Json::Node(buses);
