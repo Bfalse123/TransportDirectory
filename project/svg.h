@@ -113,6 +113,19 @@ class BaseAttrs {
     }
 };
 
+class Rect : public Object, public BaseAttrs<Rect> {
+   public:
+    Rect& SetXY(Point point);
+    Rect& SetWidth(double width);
+    Rect& SetHeight(double height);
+    void Render(ostream& out) const override;
+
+   private:
+    Point xy_;
+    double width_;
+    double height_;
+};
+
 class Circle : public Object, public BaseAttrs<Circle> {
    public:
     Circle& SetCenter(Point point);
@@ -156,12 +169,12 @@ class Document : public Object {
    public:
     template <typename ObjectType>
     void Add(ObjectType object) {
-        objects_.push_back(make_unique<ObjectType>(move(object)));
+        objects_.push_back(make_shared<ObjectType>(move(object)));
     }
 
     void Render(ostream& out) const override;
 
    private:
-    vector<unique_ptr<Object>> objects_;
+    vector<shared_ptr<Object>> objects_;
 };
 }  // namespace Svg

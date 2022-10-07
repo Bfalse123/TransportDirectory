@@ -38,16 +38,20 @@ std::pair<int32_t, double> ComputeDistances(It begin, It end) {
 }
 
 void Catalog::LoadBus(const Json::Dict& data) {
+    std::unordered_set<StopName> unique_cnt;
     const auto& bus_name = data.at("name").AsString();
     Bus& bus = buses[bus_name];
+    bus.name = bus_name;
     bus.is_rounded = data.at("is_roundtrip").AsBool();
     for (const auto& node : data.at("stops").AsArray()) {
         StopName stop_name = node.AsString();
         Stop& stop = stops[stop_name];
-        bus.unique_stops.insert(stop_name);
+        unique_cnt.insert(stop_name);
         stop.pos_in_routes[bus_name].insert(bus.route.size());
         bus.route.push_back(&stops[stop_name]);
     }
+    bus.unique_stops_cnt = unique_cnt.size();
+    bus.stops_cnt = (bus.is_rounded ? bus.route.size() : bus.route.size() * 2 - 1);
     auto lengths = ComputeDistances(bus.route.begin(), bus.route.end());
     bus.route_length = lengths.first;
     bus.geo_route_length = lengths.second;

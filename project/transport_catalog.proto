@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package ProtoCatalog;
+
+message WaitEdge {
+    string stop = 1;
+}
+
+message BusEdge {
+    string bus = 1;
+    int32 span_cnt = 5;
+}
+
+message WaitOrBus {
+    WaitEdge wait = 1;
+    BusEdge bus = 2;
+    uint32 from = 3;
+    uint32 to = 4;
+    double time = 5;
+    bool is_wait_edge = 6;
+}
+
+message Vertex {
+    string name = 1;
+    uint32 wait = 2;
+    uint32 ride = 3;
+}
+
+message Graph {
+    repeated WaitOrBus edges = 1;
+    map<string, Vertex> vertices = 2;
+}
+
+
+message RouteInternalData {
+    double weight = 1;
+    uint32 prev_edge = 2;
+    bool has_prev = 3;
+    bool has_value = 4;
+}
+
+message Row {
+    repeated RouteInternalData element = 1;
+}
+
+message Bus {
+    string name = 1;
+    int32 route_length = 2;
+    int32 stops_cnt = 3;
+    int32 unique_stops_cnt = 4;
+    double curvature = 5;
+}
+
+message Stop {
+    string name = 1;
+    repeated string buses = 2;
+}
+
+message TransportCatalog {
+    map<string, Bus> buses = 1;
+    map<string, Stop> stops = 2;
+    repeated Row route_internal_data = 3;
+    Graph graph = 4;
+}

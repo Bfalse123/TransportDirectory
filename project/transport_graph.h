@@ -1,4 +1,5 @@
 #pragma once
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -18,16 +19,22 @@ class TransportGraph {
 
     struct WaitEdge {
         StopName stop;
+        size_t from;
+        size_t to;
         Time time;
     };
 
     struct BusEdge {
-        BusName bus;
+        std::string bus;
+        size_t from;
+        size_t to;
+        std::vector<Catalog::Stop*> stops;
         int32_t span_cnt;
         Time time;
     };
 
     struct Vertex {
+        std::string name;
         size_t wait;
         size_t ride;
     };
@@ -37,23 +44,23 @@ class TransportGraph {
     std::unordered_map<StopName, Vertex> vertices;
     std::vector<Edge> edges;
 
-    using TimeGraph = Graph::DirectedWeightedGraph<Time>;
+    using Graph = Graph::DirectedWeightedGraph<double>;
 
-    const TimeGraph& GetGraph() {
+    inline const Graph& GetGraph() const {
         return graph;
     }
 
    private:
     const Catalog& transport_db;
-    TimeGraph graph;
+    Graph graph;
 
     void BuildGraph() {
         const auto& stops = transport_db.GetStops();
         size_t cnt = 0;
         for (const auto& [name, _] : stops) {
-            vertices[name] = {cnt, cnt + 1};
+            vertices[name] = {name, cnt, cnt + 1};
             graph.AddEdge({cnt, cnt + 1, transport_db.wait_time});
-            edges.push_back(Edge(WaitEdge{name, transport_db.wait_time}));
+            edges.push_back(Edge(WaitEdge{name, cnt, cnt + 1, transport_db.wait_time}));
             cnt += 2;
         }
         const auto& buses = transport_db.GetBuses();
@@ -69,11 +76,14 @@ class TransportGraph {
         for (; stop_from != end; stop_from = std::next(stop_from)) {
             int32_t distance = 0, span_cnt = 0;
             It prev = stop_from;
+            std::vector<Catalog::Stop*> stops;
             for (It stop_to = stop_from; stop_to != end; stop_to = std::next(stop_to)) {
                 distance += (*prev)->distances.at((*stop_to)->name);
                 Time time = (distance / transport_db.bus_velocity) / 60;
                 graph.AddEdge({vertices[(*stop_from)->name].ride, vertices[(*stop_to)->name].wait, time});
-                edges.push_back(Edge(BusEdge{bus, span_cnt, time}));
+                stops.push_back(*stop_to);
+                edges.push_back(Edge(BusEdge{
+                    bus, vertices[(*stop_from)->name].ride, vertices[((*stop_to)->name)].wait, stops, span_cnt, time}));
                 prev = stop_to;
                 ++span_cnt;
             }

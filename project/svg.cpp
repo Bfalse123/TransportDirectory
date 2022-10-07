@@ -91,6 +91,31 @@ void Text::Render(ostream& out) const {
     out << "</text>";
 }
 
+Rect& Rect::SetXY(Point p) {
+    xy_ = p;
+    return *this;
+}
+
+Rect& Rect::SetWidth(double width) {
+    width_ = width;
+    return *this;
+}
+
+Rect& Rect::SetHeight(double height) {
+    height_ = height;
+    return *this;
+}
+
+void Rect::Render(ostream& out) const {
+    out << "<rect ";
+    out << "x=\\\"" << xy_.x << "\\\" ";
+    out << "y=\\\"" << xy_.y << "\\\" ";
+    out << "width=\\\"" << width_ << "\\\" ";
+    out << "height=\\\"" << height_ << "\\\" ";
+    BaseAttrs::RenderAttrs(out);
+    out << " />";
+}
+
 void Document::Render(ostream& out) const {
     out << "<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\" ?>";
     out << "<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" version=\\\"1.1\\\">";

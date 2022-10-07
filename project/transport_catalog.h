@@ -24,19 +24,13 @@ class Catalog {
     };
 
     struct Bus {
-        bool is_rounded;
+        std::string name;
         int32_t route_length;
+        int32_t unique_stops_cnt;
+        int32_t stops_cnt;
         double geo_route_length;
+        bool is_rounded;
         std::vector<Stop*> route;
-        std::unordered_set<StopName> unique_stops;
-
-        int32_t GetStopCount() const {
-            return is_rounded ? route.size() : route.size() * 2 - 1;
-        }
-
-        int32_t GetUniqueStopCount() const {
-            return unique_stops.size();
-        }
     };
 
     Time wait_time;
@@ -72,6 +66,10 @@ class Catalog {
 
     const Bus& GetBus(const BusName& name) const {
         return buses.at(name);
+    }
+
+    Bus& GetBus(const BusName& name) {
+        return buses[name];
     }
 
     Catalog(const std::vector<Json::Node>& data, const Json::Dict& settings);

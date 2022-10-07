@@ -1,36 +1,36 @@
 #include <fstream>
 #include <iostream>
-#include <memory>
-#include <string>
-#include <vector>
+#include <string_view>
 
-#include "canvas.h"
-#include "executor.h"
-#include "json.h"
-#include "transport_catalog.h"
-#include "transport_graph.h"
+#include "make_base.h"
+#include "process_requests.h"
 
-void Execute(std::istream &input, std::ostream &output) {
-    using namespace std;
-    using namespace Json;
-    Document doc = Load(input);
-    const auto &data = doc.GetRoot().AsMap();
-    const auto &settings = data.at("routing_settings").AsMap();
-    const auto &out_requests = data.at("stat_requests").AsArray();
-    const auto &in_requests = data.at("base_requests").AsArray();
-    const auto &render_settings = data.at("render_settings").AsMap();
-    TransportCatalog::Catalog db(in_requests, settings);
-    Svg::Canvas canvas(render_settings, db);
-    TransportCatalog::TransportGraph graph(db);
-    Graph::Router router(graph.GetGraph());
-    Executor<TransportCatalog::Time> executor(router, db, graph, canvas);
-    Json::PrintValue<std::vector<Json::Node>>(executor.ExecuteRequests(out_requests), output);
+using namespace std;
+
+string ReadFileData(const string& file_name) {
+    ifstream file(file_name, ios::binary | ios::ate);
+    const ifstream::pos_type end_pos = file.tellg();
+    file.seekg(0, ios::beg);
+
+    string data(end_pos, '\0');
+    file.read(&data[0], end_pos);
+    return data;
 }
 
-int main() {
-    // std::ifstream input("../.help/input.json");
-    // std::ofstream output("../.help/output.json");
-    // Execute(input, output);
-    Execute(std::cin, std::cout);
+int main(int argc, const char* argv[]) {
+    if (argc != 2) {
+        cerr << "Usage: transport_catalog_part_o [make_base|process_requests]\n";
+        return 5;
+    }
+
+    const string_view mode(argv[1]);
+
+    if (mode == "make_base") {
+        MakeBase(std::cin);
+
+    } else if (mode == "process_requests") {
+        ProcessRequests(std::cin, std::cout);
+    }
+
     return 0;
 }

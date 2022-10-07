@@ -2,8 +2,8 @@
 
 #include <limits.h>
 
-#include <sstream>
 #include <algorithm>
+#include <sstream>
 #include <unordered_set>
 
 #include "sphere.h"
@@ -26,31 +26,8 @@ Svg::Color ConvertToColor(const Json::Node &node) {
     return color;
 }
 
-void Canvas::ExtractMapRenderSettings(const std::map<std::string, Json::Node> &settings) {
-    map_render_settings = {
-        .width = settings.at("width").AsDouble(),
-        .height = settings.at("height").AsDouble(),
-        .padding = settings.at("padding").AsDouble(),
-        .underlayer_color = ConvertToColor(settings.at("underlayer_color")),
-        .underlayer_width = settings.at("underlayer_width").AsDouble()};
-}  // namespace Svg
-
 Svg::Point JsonVectorToSvgPoint(const std::vector<Json::Node> v) {
     return {v[0].AsDouble(), v[1].AsDouble()};
-}
-
-void Canvas::ExtractStopRenderSettings(const std::map<std::string, Json::Node> &settings) {
-    stop_render_settings = {
-        .stop_radius = settings.at("stop_radius").AsDouble(),
-        .stop_label_font_size = static_cast<uint32_t>(settings.at("stop_label_font_size").AsInt()),
-        .stop_label_offset = JsonVectorToSvgPoint(settings.at("stop_label_offset").AsArray())};
-}  // namespace Svg
-
-void Canvas::ExtractBusRenderSettings(const std::map<std::string, Json::Node> &settings) {
-    bus_render_settings = {
-        .line_width = settings.at("line_width").AsDouble(),
-        .bus_label_font_size = static_cast<uint32_t>(settings.at("bus_label_font_size").AsInt()),
-        .bus_label_offset = JsonVectorToSvgPoint(settings.at("bus_label_offset").AsArray())};
 }
 
 Canvas::Canvas(const std::map<std::string, Json::Node> &settings, const Catalog &db)
@@ -59,17 +36,88 @@ Canvas::Canvas(const std::map<std::string, Json::Node> &settings, const Catalog 
     funcs.insert(std::make_pair("bus_labels", &Svg::Canvas::RenderBusesLabels));
     funcs.insert(std::make_pair("stop_points", &Svg::Canvas::RenderStopCircles));
     funcs.insert(std::make_pair("stop_labels", &Svg::Canvas::RenderStopLabels));
-    ExtractMapRenderSettings(settings);
-    ExtractStopRenderSettings(settings);
-    ExtractBusRenderSettings(settings);
+    width = settings.at("width").AsDouble();
+    height = settings.at("height").AsDouble();
+    padding = settings.at("padding").AsDouble();
     for (const auto &node : settings.at("layers").AsArray()) {
         layers.push_back(node.AsString());
     }
     for (const auto &node : settings.at("color_palette").AsArray()) {
         color_palette.push_back(ConvertToColor(node));
     }
+    ExtractRect(settings);
+    ExtractStopPointSettings(settings);
+    ExtractBusLayerSettings(settings);
+    ExtractStopLayerSettings(settings);
+    ExtractBusLabelTextSettings(settings);
+    ExtractStopLabelTextSettings(settings);
+    ExtractPolylineSettings(settings);
     ConstructStopsPoints();
     ConstructBusesColors();
+    drawn_map = DrawMap();
+    base_map.Add(rect);
+}
+
+void Canvas::ExtractRect(const std::map<std::string, Json::Node> &settings) {
+    double outer_margin = settings.at("outer_margin").AsDouble();
+    rect.SetXY({-outer_margin, -outer_margin})
+        .SetWidth(width + 2 * outer_margin)
+        .SetHeight(height + 2 * outer_margin)
+        .SetFillColor(ConvertToColor(settings.at("underlayer_color")))
+        .SetStrokeColor(NoneColor)
+        .SetStrokeWidth(1.0);
+}
+
+void Canvas::ExtractStopPointSettings(const std::map<std::string, Json::Node> &settings) {
+    stop_point_base
+        .SetRadius(settings.at("stop_radius").AsDouble())
+        .SetFillColor("white");
+}
+
+void Canvas::ExtractBusLayerSettings(const std::map<std::string, Json::Node> &settings) {
+    bus_layer_text.SetOffset(JsonVectorToSvgPoint(settings.at("bus_label_offset").AsArray()))
+        .SetFontSize(static_cast<uint32_t>(settings.at("bus_label_font_size").AsInt()))
+        .SetFontFamily("Verdana")
+        .SetFontWeight("bold")
+        .SetFillColor(ConvertToColor(settings.at("underlayer_color")))
+        .SetStrokeColor(ConvertToColor(settings.at("underlayer_color")))
+        .SetStrokeWidth(settings.at("underlayer_width").AsDouble())
+        .SetStrokeLineCap("round")
+        .SetStrokeLineJoin("round");
+
+}  // namespace Svg
+
+void Canvas::ExtractStopLayerSettings(const std::map<std::string, Json::Node> &settings) {
+    stop_layer_text.SetOffset(JsonVectorToSvgPoint(settings.at("stop_label_offset").AsArray()))
+        .SetFontSize(static_cast<uint32_t>(settings.at("stop_label_font_size").AsInt()))
+        .SetFontFamily("Verdana")
+        .SetFillColor(ConvertToColor(settings.at("underlayer_color")))
+        .SetStrokeColor(ConvertToColor(settings.at("underlayer_color")))
+        .SetStrokeWidth(settings.at("underlayer_width").AsDouble())
+        .SetStrokeLineCap("round")
+        .SetStrokeLineJoin("round");
+
+}  // namespace Svg
+
+void Canvas::ExtractBusLabelTextSettings(const std::map<std::string, Json::Node> &settings) {
+    bus_label_text.SetOffset(JsonVectorToSvgPoint(settings.at("bus_label_offset").AsArray()))
+        .SetFontSize(static_cast<uint32_t>(settings.at("bus_label_font_size").AsInt()))
+        .SetFontFamily("Verdana")
+        .SetFontWeight("bold");
+}
+
+void Canvas::ExtractStopLabelTextSettings(const std::map<std::string, Json::Node> &settings) {
+    stop_label_text.SetOffset(JsonVectorToSvgPoint(settings.at("stop_label_offset").AsArray()))
+        .SetFontSize(static_cast<uint32_t>(settings.at("stop_label_font_size").AsInt()))
+        .SetFontFamily("Verdana")
+        .SetFillColor("black");
+}
+
+void Canvas::ExtractPolylineSettings(const std::map<std::string, Json::Node> &settings) {
+    bus_polyline
+        .SetStrokeWidth(settings.at("line_width").AsDouble())
+        .SetStrokeLineCap("round")
+        .SetStrokeLineJoin("round");
 }
 
 bool Canvas::IsNeighbours(const Catalog::Stop *stop1, const Catalog::Stop *stop2) {
@@ -148,16 +196,13 @@ void Canvas::ConstructStopsPoints() {
         lon_sorted.push_back({uniform_stops[name].longitude, &stop});
         lat_sorted.push_back({uniform_stops[name].latitude, &stop});
     }
-    auto compare_by_double = [](const auto& lhs, const auto& rhs){
+    auto compare_by_double = [](const auto &lhs, const auto &rhs) {
         return lhs.first < rhs.first;
     };
     std::sort(lon_sorted.begin(), lon_sorted.end(), compare_by_double);
     std::sort(lat_sorted.begin(), lat_sorted.end(), compare_by_double);
     auto glued_by_lon = Glue(lon_sorted);
     auto glued_by_lat = Glue(lat_sorted);
-    double padding = map_render_settings.padding;
-    double width = map_render_settings.width;
-    double height = map_render_settings.height;
     double x_step = glued_by_lon.size() - 1 ? (width - 2 * padding) / (glued_by_lon.size() - 1) : 0.0;
     double y_step = glued_by_lat.size() - 1 ? (height - 2 * padding) / (glued_by_lat.size() - 1) : 0.0;
     for (const auto &[idx, stops] : glued_by_lon) {
@@ -174,92 +219,124 @@ void Canvas::ConstructStopsPoints() {
 
 void Canvas::RenderBusesRoutes(Svg::Document &svg) {
     for (const auto &[name, bus] : db.GetBuses()) {
-        Polyline line = Svg::Polyline{}
-                            .SetStrokeColor(buses_colors.at(name))
-                            .SetStrokeWidth(bus_render_settings.line_width)
-                            .SetStrokeLineCap("round")
-                            .SetStrokeLineJoin("round");
+        Svg::Polyline copy_base = bus_polyline;
+        copy_base.SetStrokeColor(buses_colors[name]);
         for (const auto &stop : bus.route) {
-            line.AddPoint(stops_points.at(stop->name));
+            copy_base.AddPoint(stops_points.at(stop->name));
         }
         for (auto it = std::next(bus.route.rbegin()); !bus.is_rounded && it != bus.route.rend(); it = std::next(it)) {
-            line.AddPoint(stops_points.at((*it)->name));
+            copy_base.AddPoint(stops_points.at((*it)->name));
         }
-        svg.Add(line);
+        svg.Add(copy_base);
     }
 }
 
 void Canvas::RenderStopCircles(Svg::Document &svg) {
     for (const auto &[name, stop] : stops_points) {
-        svg.Add(Circle{}
-                    .SetCenter(stop)
-                    .SetRadius(stop_render_settings.stop_radius)
-                    .SetFillColor("white"));
+        svg.Add(stop_point_base.SetCenter(stop));
     }
 }
 
-void Canvas::RenderLayerText(Text base, Svg::Document &svg) {
-    svg.Add(base
-                .SetFillColor(map_render_settings.underlayer_color)
-                .SetStrokeColor(map_render_settings.underlayer_color)
-                .SetStrokeWidth(map_render_settings.underlayer_width)
-                .SetStrokeLineCap("round")
-                .SetStrokeLineJoin("round"));
-}
-
 void Canvas::RenderBusesLabels(Svg::Document &svg) {
-    Text base = Text{}
-                    .SetOffset(bus_render_settings.bus_label_offset)
-                    .SetFontSize(bus_render_settings.bus_label_font_size)
-                    .SetFontFamily("Verdana")
-                    .SetFontWeight("bold");
     for (const auto &[name, bus] : db.GetBuses()) {
-        base.SetData(name);
         const auto &first_stop = bus.route[0];
         const auto &last_stop = bus.route.back();
-        base.SetPoint(stops_points.at(first_stop->name));
-        RenderLayerText(base, svg);
-        RenderText(base, svg, buses_colors.at(name));
-        if (!bus.is_rounded && first_stop != last_stop) {
-            base.SetPoint(stops_points.at(last_stop->name));
-            RenderLayerText(base, svg);
-            RenderText(base, svg, buses_colors.at(name));
+        svg.Add(bus_layer_text
+                    .SetData(name)
+                    .SetPoint(stops_points.at(first_stop->name)));
+        svg.Add(bus_label_text
+                    .SetData(name)
+                    .SetPoint(stops_points.at(first_stop->name))
+                    .SetFillColor(buses_colors[name]));
+        if (!bus.is_rounded && first_stop->name != last_stop->name) {
+            svg.Add(bus_layer_text.SetPoint(stops_points.at(last_stop->name)));
+            svg.Add(bus_label_text.SetPoint(stops_points.at(last_stop->name)));
         }
     }
 }
 
 void Canvas::RenderStopLabels(Svg::Document &svg) {
-    Text base = Text{}
-                    .SetOffset(stop_render_settings.stop_label_offset)
-                    .SetFontSize(stop_render_settings.stop_label_font_size)
-                    .SetFontFamily("Verdana");
     for (const auto &[name, point] : stops_points) {
-        base.SetData(name).SetPoint(point);
-        RenderLayerText(base, svg);
-        RenderText(base, svg, "black");
+        svg.Add(stop_layer_text.SetData(name).SetPoint(point));
+        svg.Add(stop_label_text.SetData(name).SetPoint(point));
     }
-}
-
-void Canvas::RenderText(Text base, Svg::Document &svg, Svg::Color color) {
-    svg.Add(base.SetFillColor(color));
 }
 
 void Canvas::ConstructBusesColors() {
     size_t cnt_color = 0;
-    std::map<BusName, Svg::Color> colors;
     for (const auto &[name, _] : db.GetBuses()) {
         buses_colors[name] = color_palette[cnt_color];
         cnt_color = (cnt_color + 1) % color_palette.size();
     }
 }
 
-std::string Canvas::Draw() {
-    Svg::Document svg;
+void Canvas::DrawRouteBusesPolylines(Document &svg, const BusRoutes &data) {
+    for (const auto &[bus, route] : data) {
+        Svg::Polyline copy_base = bus_polyline;
+        copy_base.SetStrokeColor(buses_colors.at(bus));
+        for (const auto &stop : route) {
+            copy_base.AddPoint(stops_points.at(stop->name));
+        }
+        svg.Add(copy_base);
+    }
+}
+
+void Canvas::DrawRouteBusesLabels(Document &svg, const BusRoutes &data) {
+    for (const auto &[bus, route] : data) {
+        bus_layer_text.SetData(bus);
+        bus_label_text
+            .SetData(bus)
+            .SetFillColor(buses_colors[bus]);
+        const auto &first_stop = db.GetBus(bus).route[0];
+        const auto &last_stop = db.GetBus(bus).route.back();
+        if (route[0]->name == first_stop->name || route[0]->name == last_stop->name) {
+            svg.Add(bus_layer_text.SetPoint(stops_points[route[0]->name]));
+            svg.Add(bus_label_text.SetPoint(stops_points[route[0]->name]));
+        }
+        if (route.back()->name != route[0]->name && (route.back()->name == first_stop->name || route.back()->name == last_stop->name)) {
+            svg.Add(bus_layer_text.SetPoint(stops_points[route.back()->name]));
+            svg.Add(bus_label_text.SetPoint(stops_points[route.back()->name]));
+        }
+    }
+}
+
+void Canvas::DrawRouteStopPoints(Document &svg, const Data &data) {
+    for (const auto &[stop, _] : data) {
+        svg.Add(stop_point_base.SetCenter(stops_points[stop->name]));
+    }
+}
+
+void Canvas::DrawRouteStopLabels(Document &svg, const Stops &stops) {
+    for (const auto &stop : stops) {
+        svg.Add(stop_layer_text.SetData(stop).SetPoint(stops_points[stop]));
+        svg.Add(stop_label_text.SetData(stop).SetPoint(stops_points[stop]));
+    }
+}
+
+std::string Canvas::DrawRoute(const Stops &stops, const BusRoutes &buses_routes, const Data &data) {
+    Document route_map = base_map;
     for (const auto &layer : layers) {
-        (this->*funcs.at(layer))(svg);
+        if (layer == "bus_lines") {
+            DrawRouteBusesPolylines(route_map, buses_routes);
+        } else if (layer == "bus_labels") {
+            DrawRouteBusesLabels(route_map, buses_routes);
+        } else if (layer == "stop_points") {
+            DrawRouteStopPoints(route_map, data);
+        } else if (layer == "stop_labels") {
+            DrawRouteStopLabels(route_map, stops);
+        }
+    }
+    std::stringstream out;
+    route_map.Render(out);
+    return out.str();
+}
+
+std::string Canvas::DrawMap() {
+    for (const auto &layer : layers) {
+        (this->*funcs.at(layer))(base_map);
     }
     std::ostringstream out;
-    svg.Render(out);
+    base_map.Render(out);
     return out.str();
 }
 };  // namespace Svg
