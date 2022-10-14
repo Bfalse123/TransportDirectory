@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 #include <map>
 #include <optional>
 #include <string>
@@ -11,26 +10,26 @@
 
 #include "json.h"
 #include "svg.h"
-#include "transport_catalog.h"
+#include "transport_catalog.pb.h"
 
 namespace Svg {
 class Canvas {
    public:
     struct StopBusPair {
-        TransportCatalog::Catalog::Stop* stop;
-        TransportCatalog::Catalog::Bus* bus;
+        const ProtoCatalog::Stop* stop;
+        const ProtoCatalog::Bus* bus;
     };
 
     struct BusRoute {
-        TransportCatalog::BusName busname;
-        std::vector<TransportCatalog::Catalog::Stop*> stops;
+        std::string busname;
+        std::vector<const ProtoCatalog::Stop*> stops;
     };
 
-    using Stops = std::vector<TransportCatalog::StopName>;
+    using Stops = std::vector<std::string>;
     using BusRoutes = std::vector<BusRoute>;
     using Data = std::vector<StopBusPair>;
 
-    Canvas(const std::map<std::string, Json::Node>& settings, const TransportCatalog::Catalog& db);
+    Canvas(const ProtoCatalog::TransportCatalog& db);
     std::string GetDrawnMap() {
         return drawn_map;
     }
@@ -42,9 +41,10 @@ class Canvas {
     }
 
    private:
-    const TransportCatalog::Catalog& db;
+    const ProtoCatalog::TransportCatalog& db;
+    std::map<std::string, const ProtoCatalog::Bus*> buses;
+    std::map<std::string, const ProtoCatalog::Point*> stops_points;
     std::string drawn_map;
-    double width, height, padding;
     Circle stop_point_base;
     Text bus_layer_text;
     Text stop_layer_text;
@@ -53,32 +53,16 @@ class Canvas {
     Polyline bus_polyline;
     Rect rect;
     Document base_map;
-    std::vector<Color> color_palette;
-    std::vector<std::string> layers;
-    std::map<TransportCatalog::StopName, Point> stops_points;
-    std::map<TransportCatalog::BusName, Color> buses_colors;
     std::map<std::string, void (Svg::Canvas::*)(Document& svg)> funcs;
 
-    void ExtractRect(const std::map<std::string, Json::Node>& settings);
-    void ExtractStopPointSettings(const std::map<std::string, Json::Node>& settings);
-    void ExtractBusLayerSettings(const std::map<std::string, Json::Node>& settings);
-    void ExtractStopLayerSettings(const std::map<std::string, Json::Node>& settings);
-    void ExtractBusLabelTextSettings(const std::map<std::string, Json::Node>& settings);
-    void ExtractStopLabelTextSettings(const std::map<std::string, Json::Node>& settings);
-    void ExtractPolylineSettings(const std::map<std::string, Json::Node>& settings);
-    void ConstructStopsPoints();
-    void ConstructBusesColors();
+    void ExtractRect();
+    void ExtractStopPointSettings();
+    void ExtractBusLayerSettings();
+    void ExtractStopLayerSettings();
+    void ExtractBusLabelTextSettings();
+    void ExtractStopLabelTextSettings();
+    void ExtractPolylineSettings();
     std::string DrawMap();
-
-    struct StopWithUniformArrangement {
-        double longitude;
-        double latitude;
-    };
-
-    bool IsNeighbours(const TransportCatalog::Catalog::Stop* stop1, const TransportCatalog::Catalog::Stop* stop2);
-    std::map<int32_t, std::vector<const TransportCatalog::Catalog::Stop*>> Glue(std::vector<std::pair<double, const TransportCatalog::Catalog::Stop*>>& sorted);
-    std::map<std::string, StopWithUniformArrangement> ComputeUniformArrangements();
-    void AddStopsWithNoBuses(std::map<std::string, StopWithUniformArrangement>& uniform_stops);
 
     void RenderBusesRoutes(Document& svg);
     void RenderStopCircles(Document& svg);

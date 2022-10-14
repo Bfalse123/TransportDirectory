@@ -7,6 +7,7 @@
 #include "transport_catalog.h"
 #include "transport_graph.h"
 #include "serialize.h"
+#include "render_builder.h"
 
 void MakeBase(std::istream &input) {
     using namespace std;
@@ -15,15 +16,11 @@ void MakeBase(std::istream &input) {
     const auto &data = doc.GetRoot().AsMap();
     const auto &in_requests = data.at("base_requests").AsArray();
     const auto &settings = data.at("routing_settings").AsMap();
-    //const auto &out_requests = data.at("stat_requests").AsArray();
     const auto &render_settings = data.at("render_settings").AsMap();
     const auto &serialization_settings = data.at("serialization_settings").AsMap();
     TransportCatalog::Catalog db(in_requests, settings);
     TransportCatalog::TransportGraph graph(db);
-    Serialize::Serializator serializator(db, graph);
+    Svg::RenderBuilder render_builder(db, render_settings);
+    Serialize::Serializator serializator(db, graph, render_builder);
     serializator.SerializeTo(serialization_settings.at("file").AsString());
-    //Svg::Canvas canvas(render_settings, db);
-    //TransportCatalog::TransportGraph graph(db);
-    //Graph::Router router(graph.GetGraph());
-    //Json::PrintValue<std::vector<Json::Node>>(executor.ExecuteRequests(out_requests), output);
 }

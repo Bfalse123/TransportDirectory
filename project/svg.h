@@ -86,18 +86,18 @@ class BaseAttrs {
         return AsOwner();
     }
     void RenderAttrs(ostream& out) const {
-        out << "fill=\\\"";
+        out << "fill=\"";
         Render::RenderColor(out, fill_color_);
-        out << "\\\" ";
-        out << "stroke=\\\"";
+        out << "\" ";
+        out << "stroke=\"";
         Render::RenderColor(out, stroke_color_);
-        out << "\\\" ";
-        out << "stroke-width=\\\"" << stroke_width_ << "\\\" ";
+        out << "\" ";
+        out << "stroke-width=\"" << stroke_width_ << "\" ";
         if (stroke_line_cap_) {
-            out << "stroke-linecap=\\\"" << *stroke_line_cap_ << "\\\" ";
+            out << "stroke-linecap=\"" << *stroke_line_cap_ << "\" ";
         }
         if (stroke_line_join_) {
-            out << "stroke-linejoin=\\\"" << *stroke_line_join_ << "\\\" ";
+            out << "stroke-linejoin=\"" << *stroke_line_join_ << "\" ";
         }
     }
 

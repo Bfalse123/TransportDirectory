@@ -36,9 +36,6 @@ struct RouterBuilder {
     };
     using RoutesInternalData = std::vector<std::vector<std::optional<RouteInternalData>>>;
 
-    //using ExpandedRoute = std::vector<EdgeId>;
-    //mutable RouteId next_route_id_ = 0;
-
     void InitializeRoutesInternalData(const Graph& graph) {
         const size_t vertex_count = graph.GetVertexCount();
         for (VertexId vertex = 0; vertex < vertex_count; ++vertex) {

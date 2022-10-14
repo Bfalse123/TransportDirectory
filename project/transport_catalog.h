@@ -30,6 +30,7 @@ class Catalog {
         int32_t stops_cnt;
         double geo_route_length;
         bool is_rounded;
+        std::pair<size_t, size_t> end_points;
         std::vector<Stop*> route;
     };
 

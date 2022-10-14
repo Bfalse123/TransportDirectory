@@ -22,8 +22,9 @@ struct Executor {
 
     ProtoCatalog::TransportCatalog& data;
     Graph::Router& router;
+    Svg::Canvas& canvas;
 
-    Executor(ProtoCatalog::TransportCatalog& data, Graph::Router& router) : data(data), router(router) {
+    Executor(ProtoCatalog::TransportCatalog& data, Graph::Router& router, Svg::Canvas& canvas) : data(data), router(router), canvas(canvas) {
     }
 
     Json::Dict ExecuteBusRequest(const std::string& name) {
@@ -81,36 +82,37 @@ struct Executor {
         Json::Dict res;
         res["total_time"] = info->weight;
         std::vector<Json::Node> items;
-        // Svg::Canvas::Data data;
-        // Svg::Canvas::Stops stops;
-        // Svg::Canvas::BusRoutes buses_routes;
+        Svg::Canvas::Data stops_buses;
+        Svg::Canvas::Stops stops;
+        Svg::Canvas::BusRoutes buses_routes;
         for (size_t i = 0; i < info->edge_count; ++i) {
             Graph::EdgeId edge_id = router.GetRouteEdge(info->id, i);
-            items.push_back(LoadEdge(data.graph().edges(edge_id)));
-            // if (std::holds_alternative<WaitEdge>(graph.edges[edge])) {
-            //     items.push_back(Json::Node(LoadWaitEdge(data.graph().edges(i))));
-            //     //stops.push_back(std::get<WaitEdge>(graph.edges[edge]).stop);
-            // } else if (std::holds_alternative<BusEdge>(graph.edges[edge])) {
-            //     auto bus_edge = std::get<BusEdge>(graph.edges[edge]);
-            //     items.push_back(Json::Node(LoadBusEdge(bus_edge)));
-            //     buses_routes.push_back({bus_edge.bus, bus_edge.stops});
-            //     for (auto stop : bus_edge.stops) {
-            //         data.push_back({stop, &map.GetBus(bus_edge.bus)});
-            //     }
-            // }
+            const ProtoCatalog::WaitOrBus& edge = data.graph().edges(edge_id);
+            items.push_back(LoadEdge(edge));
+            if (edge.is_wait_edge()) {
+                stops.push_back(edge.wait().stop());
+            } else {
+                std::vector<const ProtoCatalog::Stop*> route_stops;
+                const auto& bus = data.buses().at(edge.bus().bus());
+                for (size_t i = edge.bus().end_points(0); i < edge.bus().end_points(1) + 1; ++i) {
+                    route_stops.push_back(&data.stops().at(bus.route(i)));
+                    stops_buses.push_back({&data.stops().at(bus.route(i)), &data.buses().at(bus.name())});
+                }
+                buses_routes.push_back({bus.name(), std::move(route_stops)});
+            }
         }
-        //if (from != to) stops.push_back(to);
-        //res["map"] = canvas.DrawRoute(stops, buses_routes, data);
+        if (from != to) stops.push_back(to);
+        res["map"] = canvas.DrawRoute(stops, buses_routes, stops_buses);
         res["items"] = Json::Node(items);
         router.ReleaseRoute(info->id);
         return res;
     }
 
-    // Json::Dict ExecuteMapRequest() {
-    //     Json::Dict res;
-    //     res["map"] = Json::Node(canvas.GetDrawnMap());
-    //     return res;
-    // }
+    Json::Dict ExecuteMapRequest() {
+        Json::Dict res;
+        res["map"] = Json::Node(canvas.GetDrawnMap());
+        return res;
+    }
 
     std::vector<Json::Node> ExecuteRequests(const std::vector<Json::Node>& requests) {
         std::vector<Json::Node> result;
@@ -127,9 +129,9 @@ struct Executor {
             else if (type == "Route") {
                 dict = ExecuteRouteRequest(request.at("from").AsString(), request.at("to").AsString());
             } 
-            // else if (type == "Map") {
-            //     dict = ExecuteMapRequest();
-            // }
+            else if (type == "Map") {
+                dict = ExecuteMapRequest();
+            }
             dict["request_id"] = Json::Node(request.at("id").AsInt());
             result.push_back(Json::Node(dict));
         }

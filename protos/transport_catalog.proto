@@ -8,7 +8,8 @@ message WaitEdge {
 
 message BusEdge {
     string bus = 1;
-    int32 span_cnt = 5;
+    int32 span_cnt = 2;
+    repeated uint32 end_points = 3;
 }
 
 message WaitOrBus {
@@ -31,7 +32,6 @@ message Graph {
     map<string, Vertex> vertices = 2;
 }
 
-
 message RouteInternalData {
     double weight = 1;
     uint32 prev_edge = 2;
@@ -49,6 +49,9 @@ message Bus {
     int32 stops_cnt = 3;
     int32 unique_stops_cnt = 4;
     double curvature = 5;
+    repeated string route = 6;
+    repeated uint32 end_points = 7;
+    bool is_rouded = 8;
 }
 
 message Stop {
@@ -56,9 +59,38 @@ message Stop {
     repeated string buses = 2;
 }
 
+message Color {
+    string color = 1;
+}
+
+message Point {
+    double x = 1;
+    double y = 2;
+}
+
+message RenderSettings {
+    double width = 1;
+    double height = 2;
+    double padding = 3;
+    repeated string layers = 4;
+    repeated Color color_palette = 5;
+    double outer_margin = 6;
+    Color underlayer_color = 7;
+    double stop_radius = 8;
+    Point bus_label_offset = 9;
+    int32 bus_label_font_size = 10;
+    double underlayer_width = 11;
+    Point stop_label_offset = 12;
+    int32 stop_label_font_size = 13;
+    double line_width = 14;
+    map<string, Point> stops_points = 15;
+    map<string, Color> buses_colors = 16;
+}
+
 message TransportCatalog {
     map<string, Bus> buses = 1;
     map<string, Stop> stops = 2;
     repeated Row route_internal_data = 3;
     Graph graph = 4;
+    RenderSettings render = 5;
 }

@@ -13,5 +13,18 @@ protobuf_generate_cpp(
     protos/transport_catalog.proto
 )
 
-add_executable(main ${PROTO_SRCS} ${PROTO_HDRS} project/canvas.cpp  project/svg.cpp  project/json.cpp  project/main.cpp  project/sphere.cpp  project/transport_catalog.cpp project/serialize.cpp project/router.cpp)
+add_executable(main
+    ${PROTO_SRCS} 
+    ${PROTO_HDRS}
+    project/canvas.cpp 
+    project/svg.cpp 
+    project/json.cpp
+    project/main.cpp
+    project/sphere.cpp
+    project/transport_catalog.cpp
+    project/serialize.cpp
+    project/router.cpp
+    project/render_builder.cpp
+)
+
 target_link_libraries(main ${Protobuf_LIBRARIES})

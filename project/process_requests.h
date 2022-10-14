@@ -24,6 +24,8 @@ void ProcessRequests(std::istream &input, std::ostream &output) {
     const auto &serialization_settings = data.at("serialization_settings").AsMap();
     ProtoCatalog::TransportCatalog db = Deserialize(serialization_settings.at("file").AsString());
     Graph::Router router(db);
-    Executor executor(db, router);
+    Svg::Canvas canvas(db);
+    Executor executor(db, router, canvas);
+    //std::ofstream out("/home/viktor/coursera/TransportDirectoryBase/.help/result.json");
     Json::PrintValue<std::vector<Json::Node>>(executor.ExecuteRequests(out_requests), output);
 }

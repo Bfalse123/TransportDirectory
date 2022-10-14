@@ -50,6 +50,7 @@ void Catalog::LoadBus(const Json::Dict& data) {
         stop.pos_in_routes[bus_name].insert(bus.route.size());
         bus.route.push_back(&stops[stop_name]);
     }
+    bus.end_points = {0, bus.route.size() - 1};
     bus.unique_stops_cnt = unique_cnt.size();
     bus.stops_cnt = (bus.is_rounded ? bus.route.size() : bus.route.size() * 2 - 1);
     auto lengths = ComputeDistances(bus.route.begin(), bus.route.end());
